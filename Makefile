@@ -1,4 +1,4 @@
-DIRS = ch04
+DIRS = ch04 ch06
 
 modules:
 	@for dir in ${DIRS}; do ${MAKE} -C $${dir} modules; done
