@@ -136,7 +136,7 @@ static const struct file_operations globalmem_fops = {
     .release = globalmem_release,
 };
 
-int globalmem_init(void)
+static int __init globalmem_init(void)
 {
     int result;
     dev_t devno = MKDEV(globalmem_major, 0);
@@ -163,7 +163,7 @@ int globalmem_init(void)
     return 0;
 }
 
-void globalmem_exit(void)
+static void __exit globalmem_exit(void)
 {
     cdev_del(&globalmem_devp->cdev);
     kfree(globalmem_devp);
