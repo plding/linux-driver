@@ -3,6 +3,8 @@ PWD := $(shell pwd)
 
 obj-m := hello.o book.o export.o
 
+all: modules
+
 modules:
 	$(MAKE) -C $(KERNELDIR) M=$(PWD) modules
 

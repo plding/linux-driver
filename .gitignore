@@ -5,3 +5,5 @@ modules.order
 *.cmd
 *.symvers
 *.mod.c
+*.a
+*_test

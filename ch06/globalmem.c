@@ -5,16 +5,15 @@
 #include <linux/slab.h>
 #include <linux/uaccess.h>
 
+#define GLOBALMEM_MAJOR 200
 #define GLOBALMEM_SIZE  0x1000
-#define GLOBALMEM_MAJOR 250
 
 static int globalmem_major = GLOBALMEM_MAJOR;
 
 struct globalmem_dev {
     struct cdev cdev;
     unsigned char mem[GLOBALMEM_SIZE];
-};
-struct globalmem_dev *globalmem_devp;
+} *globalmem_devp;
 
 static int globalmem_open(struct inode *inode, struct file *filp)
 {
@@ -32,24 +31,20 @@ static ssize_t globalmem_read(struct file *filp, char __user *buf,
 {
     unsigned long p = *ppos;
     unsigned int count = size;
-    int ret = 0;
     struct globalmem_dev *dev = filp->private_data;
 
     if (p >= GLOBALMEM_SIZE)
         return 0;
+
     if (count > GLOBALMEM_SIZE - p)
         count = GLOBALMEM_SIZE - p;
 
-    if (copy_to_user(buf, dev->mem + p, count))
-        ret = -EFAULT;
-    else {
-        *ppos += count;
-        ret = count;
+    printk(KERN_INFO "read %u bytes from %lu\n", count, p);
+    if (copy_to_user(buf, dev->mem + p, count) != 0)
+        return -EFAULT;
 
-        printk(KERN_INFO "read %u bytes from %lu\n", count, p);
-    }
-
-    return ret;
+    *ppos += count;
+    return count;
 }
 
 static ssize_t globalmem_write(struct file *filp, const char __user *buf,
@@ -57,83 +52,58 @@ static ssize_t globalmem_write(struct file *filp, const char __user *buf,
 {
     unsigned long p = *ppos;
     unsigned int count = size;
-    int ret = 0;
     struct globalmem_dev *dev = filp->private_data;
 
     if (p >= GLOBALMEM_SIZE)
         return 0;
+
     if (count > GLOBALMEM_SIZE - p)
         count = GLOBALMEM_SIZE - p;
 
-    if (copy_from_user(dev->mem + p, buf, count))
-        ret = -EFAULT;
-    else {
-        *ppos += count;
-        ret = count;
+    printk(KERN_INFO "written %u bytes from %lu\n", count, p);
+    if (copy_from_user(dev->mem + p, buf, count) != 0)
+        return -EFAULT;
 
-        printk(KERN_INFO "written %u bytes from %lu\n", count, p);
-    }
-
-    return ret;
+    *ppos += count;
+    return count;
 }
 
-static loff_t globalmem_llseek(struct file *filp, loff_t offset, int orig)
+static loff_t globalmem_llseek(struct file *filp, loff_t offset, int whence)
 {
-    loff_t ret = 0;
-    
-    switch (orig) {
+    switch (whence) {
     case 0:
-        if (offset < 0 || offset > GLOBALMEM_SIZE) {
-            ret = -EINVAL;
-            break;
-        }
-        ret = filp->f_pos = offset;
-        break;
+        if (offset < 0 || offset > GLOBALMEM_SIZE)
+            return -EINVAL;
+        return filp->f_pos = offset;
 
     case 1:
-        if (filp->f_pos + offset < 0 ||
-            filp->f_pos + offset > GLOBALMEM_SIZE)
-        {
-            ret = -EINVAL;
-            break;
-        }
-        ret = (filp->f_pos += offset);
-        break;
+        if (filp->f_pos + offset < 0 || filp->f_pos + offset > GLOBALMEM_SIZE)
+            return -EINVAL;
+        return (filp->f_pos += offset);
 
-    default:
-        ret = -EINVAL;
-        break;
-    }
-
-    return ret;
-}
-
-static long globalmem_ioctl(struct file *filp, unsigned int cmd,
-    unsigned long arg)
-{
-    struct globalmem_dev *dev = filp->private_data;
-
-    switch (cmd) {
-    case 0x01:
-        memset(dev->mem, 0, GLOBALMEM_SIZE);
-        printk(KERN_INFO "globalmem is set to zero");
-        break;
+    case 2:
+        if (offset > 0 || GLOBALMEM_SIZE + offset < 0)
+            return -EINVAL;
+        return (filp->f_pos = GLOBALMEM_SIZE + offset);
 
     default:
         return -EINVAL;
     }
-
-    return 0;
 }
+
+// static int globalmem_ioctl()
+// {
+
+// }
 
 static const struct file_operations globalmem_fops = {
     .owner = THIS_MODULE,
     .open = globalmem_open,
+    .release = globalmem_release,
     .read = globalmem_read,
     .write = globalmem_write,
     .llseek = globalmem_llseek,
-    .unlocked_ioctl = globalmem_ioctl,
-    .release = globalmem_release,
+    // .unblocked_ioctl = globalmem_ioctl,
 };
 
 static int __init globalmem_init(void)
