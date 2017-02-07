@@ -91,10 +91,23 @@ static loff_t globalmem_llseek(struct file *filp, loff_t offset, int whence)
     }
 }
 
-// static int globalmem_ioctl()
-// {
+static long globalmem_ioctl(struct file *filp, unsigned int cmd,
+    unsigned long arg)
+{
+    struct globalmem_dev *dev = filp->private_data;
 
-// }
+    switch (cmd) {
+    case 0x01:
+        memset(dev->mem, 0, GLOBALMEM_SIZE);
+        printk(KERN_INFO "globalmem set to zero\n");
+        break;
+
+    default:
+        return -EINVAL;
+    }
+
+    return 0;
+}
 
 static const struct file_operations globalmem_fops = {
     .owner = THIS_MODULE,
@@ -103,7 +116,7 @@ static const struct file_operations globalmem_fops = {
     .read = globalmem_read,
     .write = globalmem_write,
     .llseek = globalmem_llseek,
-    // .unblocked_ioctl = globalmem_ioctl,
+    .unlocked_ioctl = globalmem_ioctl,
 };
 
 static int __init globalmem_init(void)
