@@ -12,6 +12,7 @@
 void err_sys(const char *fmt, ...);
 
 /* wrap functions */
+void    Close(int fd);
 off_t   Lseek(int fd, off_t offset, int whence);
 void    Mknod(const char *pathname, mode_t mode, dev_t dev);
 int     Open(const char *pathname, int flags, ...);
