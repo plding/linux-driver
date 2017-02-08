@@ -1,5 +1,16 @@
 #include "test.h"
 
+pid_t
+Fork(void)
+{
+    pid_t pid;
+
+    if ( (pid = fork()) == -1)
+        err_sys("fork");
+
+    return pid;
+}
+
 off_t
 Lseek(int fd, off_t offset, int whence)
 {

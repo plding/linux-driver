@@ -1,14 +1,15 @@
 #include "test.h"
 
+#define PATHNAME "/dev/globalmem"
+
 int main(void)
 {
-    const char *pathname = "/dev/globalmem";
-    char buf[255];
     int fd;
+    char buf[255];
 
-    Mknod(pathname, S_IRUSR|S_IWUSR, makedev(200, 0));
+    Mknod(PATHNAME, S_IRUSR|S_IWUSR|S_IFCHR, makedev(200, 0));
 
-    fd = Open(pathname, O_RDWR);
+    fd = Open(PATHNAME, O_RDWR);
 
     Write(fd, "hello world", 11);
 
@@ -21,6 +22,6 @@ int main(void)
     else
         printf("failed\n");
 
-    Unlink(pathname);
+    Unlink(PATHNAME);
     exit(0);
 }

@@ -1,17 +1,18 @@
 #include "test.h"
 
+#define PATHNAME1 "/dev/globalmem2_1"
+#define PATHNAME2 "/dev/globalmem2_2"
+
 int main(void)
 {
-    const char *pathname1 = "/dev/globalmem2_1";
-    const char *pathname2 = "/dev/globalmem2_2";
-    char buf[255];
     int fd1, fd2;
+    char buf[255];
 
-    Mknod(pathname1, S_IRUSR|S_IWUSR, makedev(200, 0));
-    Mknod(pathname2, S_IRUSR|S_IWUSR, makedev(200, 1));
+    Mknod(PATHNAME1, S_IRUSR|S_IWUSR|S_IFCHR, makedev(201, 0));
+    Mknod(PATHNAME2, S_IRUSR|S_IWUSR|S_IFCHR, makedev(201, 1));
 
-    fd1 = Open(pathname1, O_RDWR);
-    fd2 = Open(pathname2, O_RDWR);
+    fd1 = Open(PATHNAME1, O_RDWR);
+    fd2 = Open(PATHNAME2, O_RDWR);
 
     Write(fd1, "hello world1", 12);
     Write(fd2, "hello world2", 12);
@@ -31,8 +32,8 @@ int main(void)
     else
         printf("failed\n");
 
-    Unlink(pathname1);
-    Unlink(pathname2);
+    Unlink(PATHNAME1);
+    Unlink(PATHNAME2);
     
     exit(0);
 }

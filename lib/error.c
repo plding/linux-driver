@@ -11,7 +11,7 @@ err_sys(const char *fmt, ...)
     va_end(ap);
 
     fflush(stdout);
-    fprintf(stderr, "%s: %s", buf, strerror(errno));
+    fprintf(stderr, "%s: %s\n", buf, strerror(errno));
     fflush(stderr);
 
     exit(-1);
