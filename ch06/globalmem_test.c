@@ -11,7 +11,9 @@ int main(void)
 
     fd = Open(PATHNAME, O_RDWR);
 
-    Write(fd, "hello world", 11);
+    Write(fd, "hello", 5);
+    Write(fd, " ", 1);
+    Write(fd, "world", 5);
 
     Lseek(fd, 0, SEEK_SET);
 

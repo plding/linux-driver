@@ -65,6 +65,7 @@ static ssize_t globalmem_write(struct file *filp, const char __user *buf,
         return -EFAULT;
 
     *ppos += count;
+
     return count;
 }
 
