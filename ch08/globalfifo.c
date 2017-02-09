@@ -3,17 +3,18 @@
 #include <linux/fs.h>
 #include <linux/cdev.h>
 #include <linux/slab.h>
-#include <linux/uaccess.h>
 #include <linux/sched.h>
+#include <linux/uaccess.h>
+#include <linux/poll.h>
 
-#define GLOBALFIFO_MAJOR 0
-#define GLOBALFIFO_SIZE  0x1000
+#define GLOBALFIFO_MAJOR 200
+#define GLOBALFIFO_SIZE  0x1000   
 
 static int globalfifo_major = GLOBALFIFO_MAJOR;
 
 struct globalfifo_dev {
     struct cdev cdev;
-    unsigned int current_len;
+    unsigned long current_len;
     unsigned char mem[GLOBALFIFO_SIZE];
     struct mutex mutex;
     wait_queue_head_t r_wait;
@@ -32,96 +33,70 @@ static int globalfifo_release(struct inode *inode, struct file *filp)
 }
 
 static ssize_t globalfifo_read(struct file *filp, char __user *buf,
-    size_t count, loff_t *ppos)
+    size_t count, loff_t *f_pos)
 {
-    int ret;
+    int ret = 0;
     struct globalfifo_dev *dev = filp->private_data;
-    DECLARE_WAITQUEUE(wait, current);
 
-    add_wait_queue(&dev->r_wait, &wait);
-
-    while (dev->current_len == 0) {
-        if (filp->f_flags & O_NONBLOCK) {
-            ret = -EAGAIN;
-            goto out;
-        }
-
-        __set_current_state(TASK_INTERRUPTIBLE);
-
-        schedule();
-        if (signal_pending(current)) {
-            ret = -ERESTARTSYS;
-            goto out2;
-        }
-    }
+    wait_event_interruptible(dev->r_wait, dev->current_len != 0);
 
     if (count > dev->current_len)
         count = dev->current_len;
 
     if (copy_to_user(buf, dev->mem, count)) {
         ret = -EFAULT;
-        goto out;
     } else {
         memcpy(dev->mem, dev->mem + count, dev->current_len - count);
         dev->current_len -= count;
-        printk(KERN_INFO "read %zu bytes, current_len: %u\n", count, dev->current_len);
-        
+        printk(KERN_INFO "read %zu bytes, current_len: %lu\n", count, dev->current_len);
+
         wake_up_interruptible(&dev->w_wait);
 
         ret = count;
     }
 
-out:
-out2:
-    remove_wait_queue(&dev->r_wait, &wait);
-    set_current_state(TASK_RUNNING);
     return ret;
 }
 
 static ssize_t globalfifo_write(struct file *filp, const char __user *buf,
-    size_t count, loff_t *ppos)
+    size_t count, loff_t *f_pos)
 {
-    int ret;
+    int ret = 0;
     struct globalfifo_dev *dev = filp->private_data;
-    DECLARE_WAITQUEUE(wait, current);
 
-    add_wait_queue(&dev->w_wait, &wait);
-
-    while (dev->current_len == GLOBALFIFO_SIZE) {
-        if (filp->f_flags & O_NONBLOCK) {
-            ret = -EAGAIN;
-            goto out;
-        }
-
-        __set_current_state(TASK_INTERRUPTIBLE);
-
-        schedule();
-        if (signal_pending(current)) {
-            ret = -ERESTARTSYS;
-            goto out2;
-        }
-    }
+    wait_event_interruptible(dev->w_wait, dev->current_len != GLOBALFIFO_SIZE);
 
     if (count > GLOBALFIFO_SIZE - dev->current_len)
         count = GLOBALFIFO_SIZE - dev->current_len;
 
     if (copy_from_user(dev->mem + dev->current_len, buf, count)) {
         ret = -EFAULT;
-        goto out;
     } else {
         dev->current_len += count;
-        printk(KERN_INFO "written %zu bytes, current_len: %u\n", count, dev->current_len);
-    
+        printk(KERN_INFO "written %zu bytes, current_len: %lu\n", count, dev->current_len);
+
         wake_up_interruptible(&dev->r_wait);
 
         ret = count;
     }
 
-out:
-out2:
-    remove_wait_queue(&dev->w_wait, &wait);
-    set_current_state(TASK_RUNNING);
     return ret;
+}
+
+static unsigned int globalfifo_poll(struct file *filp, poll_table *wait)
+{
+    unsigned int mask = 0;
+    struct globalfifo_dev *dev = filp->private_data;
+
+    poll_wait(filp, &dev->r_wait, wait);
+    poll_wait(filp, &dev->w_wait, wait);
+
+    if (dev->current_len != 0)
+        mask |= POLLIN | POLLRDNORM;
+    if (dev->current_len != GLOBALFIFO_SIZE)
+        mask |= POLLOUT | POLLWRNORM;
+
+    return mask;
 }
 
 static const struct file_operations globalfifo_fops = {
@@ -130,33 +105,34 @@ static const struct file_operations globalfifo_fops = {
     .release = globalfifo_release,
     .read = globalfifo_read,
     .write = globalfifo_write,
+    .poll = globalfifo_poll,
 };
 
 static void globalfifo_setup_cdev(struct globalfifo_dev *dev, int index)
 {
-    int err, devno = MKDEV(globalfifo_major, index);
+    int err;
+    dev_t devno = MKDEV(globalfifo_major, index);
 
     cdev_init(&dev->cdev, &globalfifo_fops);
     dev->cdev.owner = THIS_MODULE;
-    dev->cdev.ops = &globalfifo_fops;
     err = cdev_add(&dev->cdev, devno, 1);
     if (err)
-        printk(KERN_WARNING "Error %d adding globalfifo%d", err, index);
+        printk(KERN_WARNING "Error %d on add globalfifo%d\n", err, index);
 }
 
 static int __init globalfifo_init(void)
 {
-    int ret;
+    int result;
     dev_t devno = MKDEV(globalfifo_major, 0);
 
-    if (globalfifo_major)
-        ret = register_chrdev_region(devno, 1, "globalfifo");
-    else {
-        ret = alloc_chrdev_region(&devno, 0, 1, "globalfifo");
+    if (globalfifo_major) {
+        result = register_chrdev_region(devno, 1, "globalfifo");
+    } else {
+        result = alloc_chrdev_region(&devno, 0, 1, "globalfifo");
         globalfifo_major = MAJOR(devno);
     }
-    if (ret < 0)
-        return ret;
+    if (result < 0)
+        return result;
 
     globalfifo_devp = kzalloc(sizeof(struct globalfifo_dev), GFP_KERNEL);
     if (!globalfifo_devp) {
@@ -173,7 +149,7 @@ static int __init globalfifo_init(void)
     return 0;
 }
 
-static void __exit globalfifo_exit(void)
+static void __exit glboalfifo_exit(void)
 {
     cdev_del(&globalfifo_devp->cdev);
     kfree(globalfifo_devp);
@@ -184,4 +160,4 @@ MODULE_AUTHOR("plding");
 MODULE_LICENSE("Dual BSD/GPL");
 
 module_init(globalfifo_init);
-module_exit(globalfifo_exit);
+module_exit(glboalfifo_exit);
