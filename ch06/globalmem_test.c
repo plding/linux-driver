@@ -13,6 +13,12 @@ int main(void)
         exit(EXIT_FAILURE);
     }
 
+	if (ioctl(fd, 0x01) == -1) {
+        perror("ioctl failed");
+        exit(EXIT_FAILURE);
+	}
+	exit(EXIT_SUCCESS);
+
     if (write(fd, "hello world", 11) != 11) {
         perror("write failed");
         exit(EXIT_FAILURE);
