@@ -59,7 +59,7 @@ static ssize_t globalmem_read(struct file *filp, char __user *buf, size_t size,
         *ppos += count;
         ret = count;
 
-        printk(KERN_INFO "read %u byte(s) from %lu", count, p);
+        printk(KERN_INFO "read %u byte(s) from %lu\n", count, p);
     }
 
     return ret;
@@ -84,7 +84,7 @@ static ssize_t globalmem_write(struct file *filp, const char __user *buf,
         *ppos += count;
         ret = count;
 
-        printk(KERN_INFO "written %u byte(s) from %lu", count, p);
+        printk(KERN_INFO "written %u byte(s) from %lu\n", count, p);
     }
 
     return ret;
@@ -99,7 +99,7 @@ static long globalmem_ioctl(struct file *filp, unsigned int cmd,
 
     case MEM_CLEAR:
         memset(dev->mem, 0, GLOBALMEM_SIZE);
-        printk(KERN_INFO "globalmem is set to zero");
+        printk(KERN_INFO "globalmem is set to zero\n");
         break;
 
     default:
@@ -167,7 +167,7 @@ static void globalmem_setup_dev(struct globalmem_dev *dev, int index)
     dev->cdev.owner = THIS_MODULE;
     err = cdev_add(&dev->cdev, devno, 1);
     if (err)
-        printk(KERN_NOTICE "Error %d adding globalmem%d", err, index);
+        printk(KERN_NOTICE "Error %d adding globalmem%d\n", err, index);
 }
 
 static int __init globalmem_init(void)
