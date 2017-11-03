@@ -26,7 +26,7 @@ int main(int argc, char **argv)
         exit(EXIT_FAILURE);
     } 
 
-    if ( (fd = open("/dev/globalfifo2", flag)) == -1) {
+    if ( (fd = open("/dev/globalfifo", flag)) == -1) {
         perror("open failed");
         exit(EXIT_FAILURE);
     }
