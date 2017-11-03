@@ -1,7 +1,7 @@
 KERNELDIR ?= /lib/modules/$(shell uname -r)/build
 PWD := $(shell pwd)
 
-obj-m := globalfifo.o
+obj-m := globalfifo.o globalfifo2.o
 
 all: modules
 
