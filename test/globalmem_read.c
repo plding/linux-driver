@@ -3,15 +3,13 @@
 int main(void)
 {
     int fd;
-    ssize_t nread;
-    char buf[255];
+    char buf[255] = { 0 };
 
     fd = Open("/dev/globalmem", O_RDONLY);
 
-    nread = Read(fd, buf, sizeof(buf));
-    buf[nread] = '\0';
+    Read(fd, buf, sizeof(buf));
 
-    printf("read: %s\n", buf);
+    printf("read: '%s'\n", buf);
 
     return 0;
 }

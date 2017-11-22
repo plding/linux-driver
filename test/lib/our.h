@@ -9,9 +9,11 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/ioctl.h>
 #include <fcntl.h>
 
-#define MAXLINE 1000
+#define MAXLINE     1000
+#define MEM_CLEAR   0x01
 
 /* error functions */
 void err_sys(const char *fmt, ...);
@@ -19,6 +21,8 @@ void err_quit(const char *fmt, ...);
 
 /* wrap functions */
 void    Close(int fd);
+pid_t   Fork(void);
+void    Ioctl(int fd, int cmd, ...);
 off_t   Lseek(int fd, off_t offset, int whence);
 void    Mknod(const char *pathname, mode_t mode, dev_t dev);
 int     Open(const char *pathname, int flags, ...);

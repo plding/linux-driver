@@ -15,8 +15,8 @@ int main(int argc, char **argv)
 
     Lseek(fd, offset, SEEK_SET);
 
-    if ( (nwritten = write(fd, argv[2], strlen(argv[1]))) > 0) {
-        printf("written %zu byte%s\n", nwritten, nwritten > 1 ? "s" : "");
+    if ( (nwritten = write(fd, argv[2], strlen(argv[2]))) > 0) {
+        printf("written %zu byte%s from %i\n", nwritten, nwritten > 1 ? "s" : "", offset);
     }
 
     return 0;

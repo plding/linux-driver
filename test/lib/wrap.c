@@ -7,6 +7,20 @@ Close(int fd)
         err_sys("close");
 }
 
+void
+Ioctl(int fd, int cmd, ...)
+{
+    va_list ap;
+    unsigned long arg;
+
+    va_start(ap, cmd);
+    arg = va_arg(ap, unsigned long);
+    va_end(ap);
+
+    if (ioctl(fd, cmd, arg) < 0)
+        err_sys("ioctl");
+}
+
 pid_t
 Fork(void)
 {
