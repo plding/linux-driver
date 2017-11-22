@@ -1,0 +1,6 @@
+
+CC = gcc
+CFLAGS = -I./lib -O -O2 -Wall
+LIBNAME = our.a
+LIBS = $(LIBNAME)
+CLEANFILES = *.o *.a
