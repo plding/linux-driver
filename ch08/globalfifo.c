@@ -51,28 +51,27 @@ static ssize_t globalfifo_read(struct file *filp, char __user *buf, size_t count
         mutex_unlock(&dev->mutex);
 
         schedule();
+
         if (signal_pending(current)) {
             ret = -ERESTARTSYS;
             goto out2;
         }
 
-        mutex_unlock(&dev->mutex);
+        mutex_lock(&dev->mutex);
     }
 
     if (count > dev->current_len)
         count = dev->current_len;
 
-    if (copy_to_user(buf, dev->mem, count)) {
+    if (copy_to_user(buf, dev->mem, count))
         ret = -EFAULT;
-        goto out;
-    } else {
-        memcpy(dev->mem, dev->mem + count, dev->current_len - count);
+    else {
+        ret = count;
+        memmove(dev->mem, dev->mem + count, dev->current_len - count);
         dev->current_len -= count;
-        
+
         printk(KERN_INFO "read %zu byte(s), current_len: %u\n", count, dev->current_len);
         wake_up_interruptible(&dev->w_wait);
-
-        ret = count;
     }
 
 out:
@@ -83,8 +82,8 @@ out2:
     return ret;
 }
 
-static ssize_t globalfifo_write(struct file *filp, const char __user *buf,
-    size_t count, loff_t *ppos)
+static ssize_t globalfifo_write(struct file *filp, const char __user *buf, size_t count,
+    loff_t *ppos)
 {
     int ret;
     struct globalfifo_dev *dev = filp->private_data;
@@ -99,10 +98,10 @@ static ssize_t globalfifo_write(struct file *filp, const char __user *buf,
             goto out;
         }
         __set_current_state(TASK_INTERRUPTIBLE);
-
         mutex_unlock(&dev->mutex);
 
         schedule();
+
         if (signal_pending(current)) {
             ret = -ERESTARTSYS;
             goto out2;
@@ -114,15 +113,14 @@ static ssize_t globalfifo_write(struct file *filp, const char __user *buf,
     if (count > GLOBALFIFO_SIZE - dev->current_len)
         count = GLOBALFIFO_SIZE - dev->current_len;
 
-    if (copy_from_user(dev->mem + dev->current_len, buf, count)) {
+    if (copy_from_user(dev->mem + dev->current_len, buf, count))
         ret = -EFAULT;
-    } else {
+    else {
+        ret = count;
         dev->current_len += count;
 
         printk(KERN_INFO "written %zu byte(s), current_len: %u\n", count, dev->current_len);
         wake_up_interruptible(&dev->r_wait);
-
-        ret = count;
     }
 
 out:
@@ -141,7 +139,7 @@ static const struct file_operations globalfifo_fops = {
     .release = globalfifo_release,
 };
 
-static void globalfifo_setup_cdev(struct globalfifo_dev *dev, int index)
+static void globalfifo_setup_dev(struct globalfifo_dev *dev, int index)
 {
     int err, devno = MKDEV(globalfifo_major, index);
 
@@ -149,17 +147,18 @@ static void globalfifo_setup_cdev(struct globalfifo_dev *dev, int index)
     dev->cdev.owner = THIS_MODULE;
     err = cdev_add(&dev->cdev, devno, 1);
     if (err)
-        printk(KERN_NOTICE "Error %d adding globalfifo%d", err, index);
+        printk(KERN_NOTICE "Error %d adding globalfifo%d\n", err, index);
 }
 
 static int __init globalfifo_init(void)
 {
     int ret;
-    dev_t devno = MKDEV(globalfifo_major, 0);
+    dev_t devno;
 
-    if (globalfifo_major)
+    if (globalfifo_major) {
+        devno = MKDEV(globalfifo_major, 0);
         ret = register_chrdev_region(devno, 1, "globalfifo");
-    else {
+    } else {
         ret = alloc_chrdev_region(&devno, 0, 1, "globalfifo");
         globalfifo_major = MAJOR(devno);
     }
@@ -172,7 +171,7 @@ static int __init globalfifo_init(void)
         goto fail_malloc;
     }
 
-    globalfifo_setup_cdev(globalfifo_devp, 0);
+    globalfifo_setup_dev(globalfifo_devp, 0);
 
     mutex_init(&globalfifo_devp->mutex);
     init_waitqueue_head(&globalfifo_devp->r_wait);

@@ -1,13 +1,13 @@
-#include <linux/module.h>
 #include <linux/init.h>
+#include <linux/module.h>
 #include <linux/fs.h>
 #include <linux/cdev.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
-#include <linux/poll.h>
 
-#define GLOBALFIFO_SIZE  10
-#define GLOBALFIFO_MAJOR 231
+#define GLOBALFIFO_SIZE     10
+#define MEM_CLEAR           0x01
+#define GLOBALFIFO_MAJOR    231
 
 static int globalfifo_major = GLOBALFIFO_MAJOR;
 
@@ -53,10 +53,9 @@ static ssize_t globalfifo_read(struct file *filp, char __user *buf, size_t count
         mutex_unlock(&dev->mutex);
 
         schedule();
-
         if (signal_pending(current)) {
             ret = -ERESTARTSYS;
-            goto out2;
+            goto out2;    
         }
 
         mutex_lock(&dev->mutex);
@@ -65,12 +64,12 @@ static ssize_t globalfifo_read(struct file *filp, char __user *buf, size_t count
     if (count > dev->current_len)
         count = dev->current_len;
 
-    if (copy_to_user(buf, dev->mem, count))
+    if (copy_to_user(buf, dev->mem, count)) {
         ret = -EFAULT;
-    else {
-        ret = count;
+    } else {
         memmove(dev->mem, dev->mem + count, dev->current_len - count);
         dev->current_len -= count;
+        ret = count;
 
         printk(KERN_INFO "read %zu bytes, current_len: %u\n", count, dev->current_len);
         wake_up_interruptible(&dev->w_wait);
@@ -104,7 +103,6 @@ static ssize_t globalfifo_write(struct file *filp, const char __user *buf,
         mutex_unlock(&dev->mutex);
 
         schedule();
-
         if (signal_pending(current)) {
             ret = -ERESTARTSYS;
             goto out2;
@@ -116,13 +114,13 @@ static ssize_t globalfifo_write(struct file *filp, const char __user *buf,
     if (count > GLOBALFIFO_SIZE - dev->current_len)
         count = GLOBALFIFO_SIZE - dev->current_len;
 
-    if (copy_from_user(dev->mem + dev->current_len, buf, count))
+    if (copy_from_user(dev->mem + dev->current_len, buf, count)) {
         ret = -EFAULT;
-    else {
-        ret = count;
+    } else {
         dev->current_len += count;
+        ret = count;
 
-        printk(KERN_INFO "written %zu bytes, current_len: %u\n", count, dev->current_len);
+        printk(KERN_INFO "write %zu bytes, current_len: %u\n", count, dev->current_len);
         wake_up_interruptible(&dev->r_wait);
     }
 
@@ -134,35 +132,12 @@ out2:
     return ret;
 }
 
-static unsigned int globalfifo_poll(struct file *filp, poll_table *wait)
-{
-    unsigned int mask = 0;
-    struct globalfifo_dev *dev = filp->private_data;
-
-    mutex_lock(&dev->mutex);
-
-    poll_wait(filp, &dev->r_wait, wait);
-    poll_wait(filp, &dev->w_wait, wait);
-
-    if (dev->current_len != 0) {
-        mask |= POLLIN | POLLRDNORM;
-    }
-
-    if (dev->current_len != GLOBALFIFO_SIZE) {
-        mask |= POLLOUT | POLLWRNORM;
-    }
-
-    mutex_unlock(&dev->mutex);
-    return mask;
-}
-
 static const struct file_operations globalfifo_fops = {
     .owner = THIS_MODULE,
-    .read = globalfifo_read,
-    .write = globalfifo_write,
     .open = globalfifo_open,
     .release = globalfifo_release,
-    .poll = globalfifo_poll,
+    .read = globalfifo_read,
+    .write = globalfifo_write,
 };
 
 static void globalfifo_setup_dev(struct globalfifo_dev *dev, int index)
@@ -183,9 +158,9 @@ static int __init globalfifo_init(void)
 
     if (globalfifo_major) {
         devno = MKDEV(globalfifo_major, 0);
-        ret = register_chrdev_region(devno, 1, "globalfifo3");
+        ret = register_chrdev_region(devno, 1, "globalfifo");
     } else {
-        ret = alloc_chrdev_region(&devno, 0, 1, "globalfifo3");
+        ret = alloc_chrdev_region(&devno, 0, 1, "globalfifo");
         globalfifo_major = MAJOR(devno);
     }
     if (ret < 0)
@@ -197,11 +172,13 @@ static int __init globalfifo_init(void)
         goto fail_malloc;
     }
 
-    globalfifo_setup_dev(globalfifo_devp, 0);
-
     mutex_init(&globalfifo_devp->mutex);
+
     init_waitqueue_head(&globalfifo_devp->r_wait);
     init_waitqueue_head(&globalfifo_devp->w_wait);
+
+    globalfifo_setup_dev(globalfifo_devp, 0);
+    return 0;
 
 fail_malloc:
     unregister_chrdev_region(devno, 1);

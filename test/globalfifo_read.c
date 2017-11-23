@@ -1,7 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <fcntl.h>
+#include "our.h"
 
 int main(int argc, char **argv)
 {
@@ -21,15 +18,9 @@ int main(int argc, char **argv)
         }
     }
 
-    if ( (fd = open("/dev/globalfifo", flag)) == -1) {
-        perror("open failed");
-        exit(EXIT_FAILURE);
-    }
+    fd = Open(GLOBALFIFO_FILENAME, flag);
 
-    if ( (nread = read(fd, buf, sizeof(buf))) == -1) {
-        perror("read failed");
-        exit(EXIT_FAILURE);
-    }
+    nread = Read(fd, buf, sizeof(buf));
 
     printf("read %zu bytes, buf: %s\n", nread, buf);
 

@@ -4,6 +4,7 @@
 #include <linux/cdev.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
+#include <linux/poll.h>
 
 #define GLOBALFIFO_SIZE  10
 #define GLOBALFIFO_MAJOR 231
@@ -47,6 +48,7 @@ static ssize_t globalfifo_read(struct file *filp, char __user *buf, size_t count
             ret = -EAGAIN;
             goto out;
         }
+
         __set_current_state(TASK_INTERRUPTIBLE);
         mutex_unlock(&dev->mutex);
 
@@ -70,7 +72,7 @@ static ssize_t globalfifo_read(struct file *filp, char __user *buf, size_t count
         memmove(dev->mem, dev->mem + count, dev->current_len - count);
         dev->current_len -= count;
 
-        printk(KERN_INFO "read %zu byte(s), current_len: %u\n", count, dev->current_len);
+        printk(KERN_INFO "read %zu bytes, current_len: %u\n", count, dev->current_len);
         wake_up_interruptible(&dev->w_wait);
     }
 
@@ -82,8 +84,8 @@ out2:
     return ret;
 }
 
-static ssize_t globalfifo_write(struct file *filp, const char __user *buf, size_t count,
-    loff_t *ppos)
+static ssize_t globalfifo_write(struct file *filp, const char __user *buf,
+    size_t count, loff_t *ppos)
 {
     int ret;
     struct globalfifo_dev *dev = filp->private_data;
@@ -97,6 +99,7 @@ static ssize_t globalfifo_write(struct file *filp, const char __user *buf, size_
             ret = -EAGAIN;
             goto out;
         }
+
         __set_current_state(TASK_INTERRUPTIBLE);
         mutex_unlock(&dev->mutex);
 
@@ -119,7 +122,7 @@ static ssize_t globalfifo_write(struct file *filp, const char __user *buf, size_
         ret = count;
         dev->current_len += count;
 
-        printk(KERN_INFO "written %zu byte(s), current_len: %u\n", count, dev->current_len);
+        printk(KERN_INFO "written %zu bytes, current_len: %u\n", count, dev->current_len);
         wake_up_interruptible(&dev->r_wait);
     }
 
@@ -131,12 +134,35 @@ out2:
     return ret;
 }
 
+static unsigned int globalfifo_poll(struct file *filp, poll_table *wait)
+{
+    unsigned int mask = 0;
+    struct globalfifo_dev *dev = filp->private_data;
+
+    mutex_lock(&dev->mutex);
+
+    poll_wait(filp, &dev->r_wait, wait);
+    poll_wait(filp, &dev->w_wait, wait);
+
+    if (dev->current_len != 0) {
+        mask |= POLLIN | POLLRDNORM;
+    }
+
+    if (dev->current_len != GLOBALFIFO_SIZE) {
+        mask |= POLLOUT | POLLWRNORM;
+    }
+
+    mutex_unlock(&dev->mutex);
+    return mask;
+}
+
 static const struct file_operations globalfifo_fops = {
     .owner = THIS_MODULE,
     .read = globalfifo_read,
     .write = globalfifo_write,
     .open = globalfifo_open,
     .release = globalfifo_release,
+    .poll = globalfifo_poll,
 };
 
 static void globalfifo_setup_dev(struct globalfifo_dev *dev, int index)
@@ -176,8 +202,6 @@ static int __init globalfifo_init(void)
     mutex_init(&globalfifo_devp->mutex);
     init_waitqueue_head(&globalfifo_devp->r_wait);
     init_waitqueue_head(&globalfifo_devp->w_wait);
-
-    return 0;
 
 fail_malloc:
     unregister_chrdev_region(devno, 1);

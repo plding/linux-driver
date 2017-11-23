@@ -2,7 +2,8 @@
 include Make.defines
 
 PROGS = globalmem_test globalmem_read globalmem_write globalmem_clr \
-		globalmem_concurrency
+		globalmem_concurrency \
+		globalfifo_read globalfifo_write
 
 all: $(LIBNAME) $(PROGS)
 
@@ -19,6 +20,12 @@ globalmem_clr: globalmem_clr.o
 	$(CC) $(CFLAGS) -o $@ $< $(LIBS)
 
 globalmem_concurrency: globalmem_concurrency.o
+	$(CC) $(CFLAGS) -o $@ $< $(LIBS)
+
+globalfifo_read: globalfifo_read.o
+	$(CC) $(CFLAGS) -o $@ $< $(LIBS)
+
+globalfifo_write: globalfifo_write.o
 	$(CC) $(CFLAGS) -o $@ $< $(LIBS)
 
 $(LIBNAME):
