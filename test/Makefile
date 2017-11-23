@@ -1,9 +1,12 @@
 
 include Make.defines
 
-PROGS = globalmem_read globalmem_write globalmem_clr
+PROGS = globalmem_test globalmem_read globalmem_write globalmem_clr
 
 all: $(LIBNAME) $(PROGS)
+
+globalmem_test: globalmem_test.o
+	$(CC) $(CFLAGS) -o $@ $< $(LIBS)
 
 globalmem_read: globalmem_read.o
 	$(CC) $(CFLAGS) -o $@ $< $(LIBS)

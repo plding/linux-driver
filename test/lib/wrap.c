@@ -1,5 +1,16 @@
 #include "our.h"
 
+char *
+Calloc(size_t size)
+{
+    char *mem = Malloc(size);
+
+    if (!mem)
+        memset(mem, 0, size);
+
+    return mem;
+}
+
 void
 Close(int fd)
 {
@@ -43,6 +54,17 @@ Lseek(int fd, off_t offset, int whence)
     return off;
 }
 
+char
+*Malloc(size_t size)
+{
+    char *mem;
+
+    if (!(mem = malloc(size)))
+        err_sys("malloc");
+
+    return mem;
+}
+
 void
 Mknod(const char *pathname, mode_t mode, dev_t dev)
 {
@@ -73,6 +95,17 @@ Open(const char *pathname, int flags, ...)
 }
 
 ssize_t
+Pwrite(int fd, const void *buf, size_t count, off_t offset)
+{
+    ssize_t nwritten;
+
+    if ( (nwritten = pwrite(fd, buf, count, offset)) == -1)
+        err_sys("pwrite");
+
+    return nwritten;
+}
+
+ssize_t
 Read(int fd, void *buf, size_t count)
 {
     ssize_t nread;
@@ -90,9 +123,13 @@ Unlink(const char *pathname)
         err_sys("unlink");
 }
 
-void
+ssize_t
 Write(int fd, const void *buf, size_t count)
 {
-    if (write(fd, buf, count) != (ssize_t) count)
+    ssize_t nwritten;
+
+    if ( (nwritten = write(fd, buf, count)) == -1)
         err_sys("write");
+
+    return nwritten;
 }

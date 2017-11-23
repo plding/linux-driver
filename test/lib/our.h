@@ -20,14 +20,17 @@ void err_sys(const char *fmt, ...);
 void err_quit(const char *fmt, ...);
 
 /* wrap functions */
+char   *Calloc(size_t size);
 void    Close(int fd);
 pid_t   Fork(void);
 void    Ioctl(int fd, int cmd, ...);
 off_t   Lseek(int fd, off_t offset, int whence);
+char   *Malloc(size_t size);
 void    Mknod(const char *pathname, mode_t mode, dev_t dev);
 int     Open(const char *pathname, int flags, ...);
+ssize_t Pwrite(int fd, const void *buf, size_t count, off_t offset);
 ssize_t Read(int fd, void *buf, size_t count);
 void    Unlink(const char *pathname);
-void    Write(int fd, const void *buf, size_t count);
+ssize_t Write(int fd, const void *buf, size_t count);
 
 #endif  /* __OUR_H */
