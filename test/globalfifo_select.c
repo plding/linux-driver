@@ -1,17 +1,11 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <fcntl.h>
+#include "our.h"
 
 int main(void)
 {
     int fd;
     fd_set rfds, wfds;
 
-    if ( (fd = open("/dev/globalfifo3", O_RDWR | O_NONBLOCK)) == -1) {
-        perror("open failed");
-        exit(EXIT_FAILURE);
-    }
+    fd = Open(GLOBALFIFO_FILENAME, O_RDWR|O_NONBLOCK);
 
     while (1) {
         FD_ZERO(&rfds);
@@ -19,7 +13,7 @@ int main(void)
         FD_SET(fd, &rfds);
         FD_SET(fd, &wfds);
 
-        select(fd + 1, &rfds, &wfds, NULL, NULL);
+        Select(fd + 1, &rfds, &wfds, NULL, NULL);
 
         if (FD_ISSET(fd, &rfds))
             printf("Poll monitor: can be read\n");

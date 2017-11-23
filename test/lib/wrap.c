@@ -18,6 +18,42 @@ Close(int fd)
         err_sys("close");
 }
 
+int
+Epoll_create(int size)
+{
+    int epfd;
+
+    if ( (epfd = epoll_create(size)) < 0)
+        err_sys("epoll_create");
+
+    return epfd;
+}
+
+void
+Epoll_ctl(int epfd, int op, int fd, struct epoll_event *event)
+{
+    if (epoll_ctl(epfd, op, fd, event) < 0)
+        err_sys("epoll_ctl");
+}
+
+void
+Epoll_wait(int epfd, struct epoll_event *events, int maxevents, int timeout)
+{
+    if (epoll_wait(epfd, events, maxevents, timeout) < 0)
+        err_sys("epoll_wait");
+}
+
+pid_t
+Fork(void)
+{
+    pid_t pid;
+
+    if ( (pid = fork()) == -1)
+        err_sys("fork");
+
+    return pid;
+}
+
 void
 Ioctl(int fd, int cmd, ...)
 {
@@ -30,17 +66,6 @@ Ioctl(int fd, int cmd, ...)
 
     if (ioctl(fd, cmd, arg) < 0)
         err_sys("ioctl");
-}
-
-pid_t
-Fork(void)
-{
-    pid_t pid;
-
-    if ( (pid = fork()) == -1)
-        err_sys("fork");
-
-    return pid;
 }
 
 off_t
@@ -94,6 +119,17 @@ Open(const char *pathname, int flags, ...)
     return fd;
 }
 
+int
+Poll(struct pollfd *fds, nfds_t nfds, int timeout)
+{
+    int nready;
+
+    if ( (nready = poll(fds, nfds, timeout)) < 0)
+        err_sys("poll");
+
+    return nready;
+}
+
 ssize_t
 Pwrite(int fd, const void *buf, size_t count, off_t offset)
 {
@@ -114,6 +150,17 @@ Read(int fd, void *buf, size_t count)
         err_sys("read");
 
     return nread;
+}
+
+int
+Select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout)
+{
+    int nready;
+
+    if ( (nready = select(nfds, readfds, writefds, exceptfds, timeout)) == -1)
+        err_sys("select");
+
+    return nready;
 }
 
 void

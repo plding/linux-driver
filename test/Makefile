@@ -3,7 +3,8 @@ include Make.defines
 
 PROGS = globalmem_test globalmem_read globalmem_write globalmem_clr \
 		globalmem_concurrency \
-		globalfifo_read globalfifo_write
+		globalfifo_read globalfifo_write \
+		globalfifo_select globalfifo_poll globalfifo_epoll
 
 all: $(LIBNAME) $(PROGS)
 
@@ -26,6 +27,15 @@ globalfifo_read: globalfifo_read.o
 	$(CC) $(CFLAGS) -o $@ $< $(LIBS)
 
 globalfifo_write: globalfifo_write.o
+	$(CC) $(CFLAGS) -o $@ $< $(LIBS)
+
+globalfifo_select: globalfifo_select.o
+	$(CC) $(CFLAGS) -o $@ $< $(LIBS)
+
+globalfifo_poll: globalfifo_poll.o
+	$(CC) $(CFLAGS) -o $@ $< $(LIBS)
+
+globalfifo_epoll: globalfifo_epoll.o
 	$(CC) $(CFLAGS) -o $@ $< $(LIBS)
 
 $(LIBNAME):
