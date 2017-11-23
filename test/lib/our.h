@@ -10,10 +10,14 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/ioctl.h>
+#include <sys/wait.h>
 #include <fcntl.h>
 
 #define MAXLINE     1000
 #define MEM_CLEAR   0x01
+
+#define GLOBALMEM_FILENAME  "/dev/globalmem"
+#define GLOBALFIFO_FILENAME "/dev/globalfifo"
 
 /* error functions */
 void err_sys(const char *fmt, ...);

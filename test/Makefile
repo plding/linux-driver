@@ -1,7 +1,8 @@
 
 include Make.defines
 
-PROGS = globalmem_test globalmem_read globalmem_write globalmem_clr
+PROGS = globalmem_test globalmem_read globalmem_write globalmem_clr \
+		globalmem_concurrency
 
 all: $(LIBNAME) $(PROGS)
 
@@ -15,6 +16,9 @@ globalmem_write: globalmem_write.o
 	$(CC) $(CFLAGS) -o $@ $< $(LIBS)
 
 globalmem_clr: globalmem_clr.o
+	$(CC) $(CFLAGS) -o $@ $< $(LIBS)
+
+globalmem_concurrency: globalmem_concurrency.o
 	$(CC) $(CFLAGS) -o $@ $< $(LIBS)
 
 $(LIBNAME):

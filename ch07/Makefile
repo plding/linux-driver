@@ -2,7 +2,7 @@
 KERNELDIR ?= /lib/modules/$(shell uname -r)/build
 PWD := $(shell pwd)
 
-obj-m := globalmem.o
+obj-m := globalmem.o globalmem_1.o
 
 all: modules
 
